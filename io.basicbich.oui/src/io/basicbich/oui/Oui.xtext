@@ -1,0 +1,57 @@
+grammar io.basicbich.oui.Oui with org.eclipse.xtext.common.Terminals
+
+generate oui "http://basicbich.io/oui/Oui"
+
+Program: instructions+=Instruction ('|' instructions+=Instruction)* output=Output;
+
+Instruction: Selector | Constructor;
+
+Selector: {Selector} '$' (fragments+=SelectorFragment)*;
+
+SelectorFragment: '.' (SelectorRangeFragment | SelectorAttributeFragment | SelectorIndexFragment);
+
+NullableINT: val=INT;
+SelectorRangeFragment: {SelectorRangeFragment} '[' (start=NullableINT)? ':' (end=NullableINT)? (':' step=NullableINT)? ']';
+SelectorAttributeFragment: attribute=ID;
+SelectorIndexFragment: '[' indexes+=INT (',' indexes+=INT)* ']';
+
+Constructor: ArrayConstructor;
+
+ArrayConstructor: {ArrayConstructor} '[' (selectors+=Selector (',' selectors+=Selector)*)? ']';
+
+Output: '>' columns+=Column (',' columns+=Column)*;
+Column: name=ID;
+
+// $.[:] | [$.name, $.age] > colone1,colone2
+
+/*
+ * Program:
+ *     instructions[]:
+ *         - Selector:
+ *             fragments[]:
+ *                 - SelectorRangeFragment:
+ *                     start=null
+ *                     end=null
+ *                     step=null
+ *         - ArrayConstructor:
+ *             selectors[]:
+ *                 - Selector:
+ *                     fragments[]:
+ *                         - SelectorAttributeFragment:
+ *                             attribute="name"
+ *                 - Selector:
+ *                     fragments[]:
+ *                         - SelectorAttributeFragment:
+ *                             attribute="age"
+ *     output:
+ *         columns[]:
+ *             - Column:
+ *                 name="colone1"
+ *             - Column:
+ *                 name="colone2"
+ */
+ 
+
+
+
+
