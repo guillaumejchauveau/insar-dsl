@@ -22,7 +22,7 @@ class OuiParsingTest {
 	@Test
 	def void loadModel() {
 		val result = parseHelper.parse('''
-			$.[:] | [$.name, $.age] > colone1,colone2
+			$.[:] > colonne1: $.name, colonne2: $.age
 		''')
 		Assertions.assertNotNull(result)
 		val errors = result.eResource.errors

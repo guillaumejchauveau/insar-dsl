@@ -3,14 +3,13 @@ package io.basicbich.oui.tests.compiler.jq;
 
 import java.util.stream.Collectors;
 
-import io.basicbich.oui.oui.ArrayConstructor;
+import io.basicbich.oui.oui.Column;
 import io.basicbich.oui.oui.Instruction;
 import io.basicbich.oui.oui.NullableINT;
 import io.basicbich.oui.oui.Program;
 import io.basicbich.oui.oui.Selector;
 import io.basicbich.oui.oui.SelectorFragment;
 import io.basicbich.oui.oui.SelectorRangeFragment;
-import io.basicbich.oui.oui.impl.ArrayConstructorImpl;
 import io.basicbich.oui.oui.impl.SelectorAttributeFragmentImpl;
 import io.basicbich.oui.oui.impl.SelectorImpl;
 import io.basicbich.oui.oui.impl.SelectorRangeFragmentImpl;
@@ -43,22 +42,20 @@ public class ProgramCompiler implements Compiler<Program, String> {
 		return r.isEmpty() ? "." : r;
 	}
 	
-	private String arrayConstructor(ArrayConstructor arrayConstructor) {
-		return arrayConstructor.getSelectors().stream()
-				.map(this::selector)
-				.collect(Collectors.joining(", ", "[", "]"));
-	}
-	
 	private String instruction(Instruction instruction) {
 		return (String) new AlternativeMapper<>()
 				.map(SelectorImpl.class, this::selector)
-				.map(ArrayConstructorImpl.class, this::arrayConstructor)
 				.compile(instruction);
 	}
 	
 	public String compile(Program program) {
-		return program.getInstructions().stream()
+		var r = program.getInstructions().stream()
 				.map(this::instruction)
-				.collect(Collectors.joining(" | ", "", " | @csv"));
+				.collect(Collectors.joining(" | "));
+		
+		return r + program.getOutput().getColumns().stream()
+				.map(Column::getSelector)
+				.map(this::selector)
+				.collect(Collectors.joining(", ", " | [", "] | @csv"));
 	}
 }

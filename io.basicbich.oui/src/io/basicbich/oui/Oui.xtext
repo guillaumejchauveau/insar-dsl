@@ -4,25 +4,26 @@ generate oui "http://basicbich.io/oui/Oui"
 
 Program: instructions+=Instruction ('|' instructions+=Instruction)* output=Output;
 
-Instruction: Selector | Constructor;
+Instruction: Selector;
 
 Selector: {Selector} '$' (fragments+=SelectorFragment)*;
 
 SelectorFragment: '.' (SelectorRangeFragment | SelectorAttributeFragment | SelectorIndexFragment);
 
+// Allows to know if an optional value was set or not. By default, XText sets optional integers 
+// to zero if not set, which is inconvenient in our case.
 NullableINT: val=INT;
+// We need to make the difference between attributes provided by the user or the default values 
+// of XText. Ex: "end" is optional, if it is missing it should be interpreted as "to the end", 
+// however the default value of an integer is zero: this is why "NullableInt" is introduced.
 SelectorRangeFragment: {SelectorRangeFragment} '[' (start=NullableINT)? ':' (end=NullableINT)? (':' step=NullableINT)? ']';
 SelectorAttributeFragment: attribute=ID;
 SelectorIndexFragment: '[' indexes+=INT (',' indexes+=INT)* ']';
 
-Constructor: ArrayConstructor;
-
-ArrayConstructor: {ArrayConstructor} '[' (selectors+=Selector (',' selectors+=Selector)*)? ']';
-
 Output: '>' columns+=Column (',' columns+=Column)*;
-Column: name=ID;
+Column: name=ID ':' selector=Selector;
 
-// $.[:] | [$.name, $.age] > colone1,colone2
+// $.[:] > colonne1: $.name, colonne2: $.age
 
 /*
  * Program:
