@@ -36,7 +36,6 @@ Workflow {
 		language = StandardLanguage {
 			name = "io.basicbich.oui.Oui"
 			fileExtensions = "oui"
-
 			serializer = {
 				generateStub = false
 			}
@@ -50,6 +49,7 @@ Workflow {
 			}
 			junitSupport = {
 				junitVersion = "5"
+				generateXtendStub = false
 			}
 		}
 	}
