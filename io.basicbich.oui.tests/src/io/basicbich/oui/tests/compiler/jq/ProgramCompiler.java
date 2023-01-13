@@ -2,54 +2,94 @@ package io.basicbich.oui.tests.compiler.jq;
 
 
 import io.basicbich.oui.oui.*;
-import io.basicbich.oui.oui.impl.SelectorAttributeFragmentImpl;
-import io.basicbich.oui.oui.impl.SelectorImpl;
-import io.basicbich.oui.oui.impl.SelectorRangeFragmentImpl;
 import io.basicbich.oui.tests.compiler.AlternativeMapper;
+import io.basicbich.oui.tests.compiler.Common;
 import io.basicbich.oui.tests.compiler.Compiler;
+import io.basicbich.oui.tests.compiler.exception.UnknownFilterException;
 
 import java.util.stream.Collectors;
 
 public class ProgramCompiler implements Compiler<Program, String> {
+    public static final String PROGRAM_EPILOG = "(first(.[]) | keys_unsorted), (.[] | [.[]]) | @csv";
+
     private String nInt(NullableINT nInt) {
         return nInt == null ? "" : Integer.toString(nInt.getVal());
     }
 
-    private String selectorRangeFragment(SelectorRangeFragment selectorRangeFragment) {
-        if (selectorRangeFragment.getStart() == null && selectorRangeFragment.getEnd() == null) {
-            return ".[]";
+    private String selectorRangeFragment(RangeSelectorFragment fragment) {
+        if (fragment.getStart() == null && fragment.getEnd() == null) {
+            return "[]";
         }
-        return ".[" + nInt(selectorRangeFragment.getStart()) + ":" + nInt(selectorRangeFragment.getEnd()) + "]";
+        return "[" + nInt(fragment.getStart()) + ":" + nInt(fragment.getEnd()) + "]";
     }
 
-    private String selectorFragment(SelectorFragment selectorFragment) {
+    private String selectorIndexFragment(IndexSelectorFragment fragment) {
+        return fragment.getIndexes().stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ", "[", "]"));
+    }
+
+    private String selectorFragment(SelectorFragment fragment) {
         return (String) new AlternativeMapper<>()
-                .map(SelectorRangeFragmentImpl.class, this::selectorRangeFragment)
-                .map(SelectorAttributeFragmentImpl.class, attr -> "." + attr.getAttribute())
-                .compile(selectorFragment);
+                .map(RangeSelectorFragment.class, this::selectorRangeFragment)
+                .map(AttributeSelectorFragment.class, attr -> "." + attr.getAttribute())
+                .map(IndexSelectorFragment.class, this::selectorIndexFragment)
+                .compile(fragment);
+    }
+
+    private String filter(Filter filter) {
+        switch (filter.getName()) {
+            case "entries":
+                return "to_entries[]";
+            case "keys":
+                return "keys_unsorted[]";
+            case "values":
+                return "values[]";
+            case "length":
+                return "length";
+            default:
+                throw new UnknownFilterException(filter);
+        }
     }
 
     private String selector(Selector selector) {
-        var r = selector.getFragments().stream()
+        var fragments = selector.getFragments().stream()
                 .map(this::selectorFragment)
                 .collect(Collectors.joining());
-        return r.isEmpty() ? "." : r;
+        return new AlternativeMapper<>()
+                .map(RootSelectorScope.class, scope -> fragments.startsWith(".") ? "" : ".")
+                .map(AssignmentSelectorScope.class, scope -> "$" + scope.getAssignment().getName())
+                .map(FilterSelectorScope.class, scope -> this.filter(scope.getFilter()))
+                .compile(selector.getScope())
+                + fragments;
+    }
+
+    private String objectConstructor(ObjectConstructor objectConstructor) {
+        return objectConstructor.getAttributes().stream()
+                .map(Common::prepare)
+                .map(attr -> attr.getName() + ": " + this.selector(attr.getSelector()))
+                .collect(Collectors.joining(", ", "{", "}"));
     }
 
     private String instruction(Instruction instruction) {
         return (String) new AlternativeMapper<>()
-                .map(SelectorImpl.class, this::selector)
+                .map(Selector.class, this::selector)
+                .map(ObjectConstructor.class, this::objectConstructor)
+                .map(Assignment.class, assign -> this.instruction(assign.getInstruction()) + " as $" + assign.getName())
+                .map(InstructionSet.class, set -> "(" + this.instructionSet(set) + ")")
                 .compile(instruction);
     }
 
-    public String compile(Program program) {
-        var r = program.getInstructions().stream()
+    private String instructionSet(InstructionSet instructionSet) {
+        return instructionSet.getInstructions().stream()
                 .map(this::instruction)
                 .collect(Collectors.joining(" | "));
+    }
 
-        return r + program.getOutput().getColumns().stream()
-                .map(Column::getSelector)
-                .map(this::selector)
-                .collect(Collectors.joining(", ", " | [", "] | @csv"));
+    public String compile(Program program) {
+        if (program.getInstructions() == null) {
+            return PROGRAM_EPILOG;
+        }
+        return "[" + this.instructionSet(program.getInstructions()) + "] | " + PROGRAM_EPILOG;
     }
 }

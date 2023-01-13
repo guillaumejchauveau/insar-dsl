@@ -1,5 +1,7 @@
 package io.basicbich.oui.tests.compiler;
 
+import io.basicbich.oui.tests.compiler.exception.CompilerException;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,6 +16,11 @@ public class AlternativeMapper<Base, R> implements Compiler<Base, R> {
     @SuppressWarnings("unchecked")
     @Override
     public R compile(Base o) {
-        return ((Compiler<Base, R>) map.get(o.getClass())).compile(o);
+        var compiler = (Compiler<Base, R>) map.entrySet().stream()
+                .filter(entry -> entry.getKey().isInstance(o))
+                .findFirst()
+                .orElseThrow(() -> new CompilerException("No alternative found for " + o.getClass()))
+                .getValue();
+        return compiler.compile(o);
     }
 }

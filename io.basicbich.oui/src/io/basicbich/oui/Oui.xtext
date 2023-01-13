@@ -2,57 +2,42 @@ grammar io.basicbich.oui.Oui with org.eclipse.xtext.common.Terminals
 
 generate oui "http://basicbich.io/oui/Oui"
 
-Program: instructions+=Instruction ('|' instructions+=Instruction)* output=Output;
+Program: {Program} (instructions=InstructionSet)?;
 
-Instruction: Selector;
+InstructionSet: instructions+=Instruction ('|' instructions+=Instruction)*;
+Instruction: Selector | ObjectConstructor | Assignment | '(' InstructionSet ')';
 
-Selector: {Selector} '$' (fragments+=SelectorFragment)*;
+/* Selector */
+Selector: scope=SelectorScope (fragments+=SelectorFragment)*;
 
-SelectorFragment: '.' (SelectorRangeFragment | SelectorAttributeFragment | SelectorIndexFragment);
+SelectorScope: RootSelectorScope | NamedSelectorScope;
+NamedSelectorScope: AssignmentSelectorScope | FilterSelectorScope;
+RootSelectorScope: {RootSelectorScope} '$';
+AssignmentSelectorScope: '$' assignment=[Assignment]; // TODO: Add scope
+FilterSelectorScope: filter=Filter;
 
-// Allows to know if an optional value was set or not. By default, XText sets optional integers 
-// to zero if not set, which is inconvenient in our case.
-NullableINT: val=INT;
+SelectorFragment: RangeSelectorFragment | IndexSelectorFragment | NamedSelectorFragment;
+NamedSelectorFragment: AttributeSelectorFragment;
 // We need to make the difference between attributes provided by the user or the default values 
 // of XText. Ex: "end" is optional, if it is missing it should be interpreted as "to the end", 
 // however the default value of an integer is zero: this is why "NullableInt" is introduced.
-SelectorRangeFragment: {SelectorRangeFragment} '[' (start=NullableINT)? ':' (end=NullableINT)? (':' step=NullableINT)? ']';
-SelectorAttributeFragment: attribute=ID;
-SelectorIndexFragment: '[' indexes+=INT (',' indexes+=INT)* ']';
+RangeSelectorFragment: {RangeSelectorFragment} '[' (start=NullableINT)? ':' (end=NullableINT)? (':' step=NullableINT)? ']';
+AttributeSelectorFragment: '.' attribute=ObjectAttributeName;
+IndexSelectorFragment: '[' indexes+=INT (',' indexes+=INT)* ']';
 
-Output: '>' columns+=Column (',' columns+=Column)*;
-Column: name=ID ':' selector=Selector;
+/* Object constructor */
+ObjectConstructor: '{' attributes+=ObjectAttribute (',' attributes+=ObjectAttribute)* '}';
+ObjectAttribute: (name=ObjectAttributeName ':')? selector=Selector;
+ObjectAttributeName: ID;
 
-// $.[:] > colonne1: $.name, colonne2: $.age
+/* Assignment */
+Assignment: name=ID '=' instruction=Instruction; // TODO: validate that name does not exist
 
-/*
- * Program:
- *     instructions[]:
- *         - Selector:
- *             fragments[]:
- *                 - SelectorRangeFragment:
- *                     start=null
- *                     end=null
- *                     step=null
- *         - ArrayConstructor:
- *             selectors[]:
- *                 - Selector:
- *                     fragments[]:
- *                         - SelectorAttributeFragment:
- *                             attribute="name"
- *                 - Selector:
- *                     fragments[]:
- *                         - SelectorAttributeFragment:
- *                             attribute="age"
- *     output:
- *         columns[]:
- *             - Column:
- *                 name="colone1"
- *             - Column:
- *                 name="colone2"
- */
- 
+/* Filter */
+Filter: name=ID;
 
+/* Utils */
 
-
-
+// Allows to know if an optional value was set or not. By default, XText sets optional integers
+// to zero if not set, which is inconvenient in our case.
+NullableINT: val=INT;
