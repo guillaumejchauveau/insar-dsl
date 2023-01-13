@@ -16,14 +16,13 @@ RootSelectorScope: {RootSelectorScope} '$';
 AssignmentSelectorScope: '$' assignment=[Assignment]; // TODO: Add scope
 FilterSelectorScope: filter=Filter;
 
-SelectorFragment: RangeSelectorFragment | IndexSelectorFragment | NamedSelectorFragment;
+SelectorFragment: NamedSelectorFragment | IndexSelectorFragment | SliceSelectorFragment | StartSliceSelectorFragment;
 NamedSelectorFragment: AttributeSelectorFragment;
-// We need to make the difference between attributes provided by the user or the default values 
-// of XText. Ex: "end" is optional, if it is missing it should be interpreted as "to the end", 
-// however the default value of an integer is zero: this is why "NullableInt" is introduced.
-RangeSelectorFragment: {RangeSelectorFragment} '[' (start=NullableINT)? ':' (end=NullableINT)? (':' step=NullableINT)? ']';
 AttributeSelectorFragment: '.' attribute=ObjectAttributeName;
-IndexSelectorFragment: '[' indexes+=INT (',' indexes+=INT)* ']';
+
+IndexSelectorFragment: {IndexSelectorFragment} '[' indexes+=INT? (',' indexes+=INT)* ']';
+SliceSelectorFragment: '[' start=INT? ':' end=INT ']';
+StartSliceSelectorFragment: '[' start=INT ':' ']';
 
 /* Object constructor */
 ObjectConstructor: '{' attributes+=ObjectAttribute (',' attributes+=ObjectAttribute)* '}';
@@ -35,9 +34,3 @@ Assignment: name=ID '=' instruction=Instruction; // TODO: validate that name doe
 
 /* Filter */
 Filter: name=ID;
-
-/* Utils */
-
-// Allows to know if an optional value was set or not. By default, XText sets optional integers
-// to zero if not set, which is inconvenient in our case.
-NullableINT: val=INT;

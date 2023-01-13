@@ -29,21 +29,21 @@ public class OuiProgramTest {
 
     @Test
     void d() {
-        var input = "{ color: $.colors[:], car: $.cars[:] }";
+        var input = "{ color: $.colors[], car: $.cars[] }";
         var expectedOutput = "[{color: .colors[], car: .cars[]}] | " + ProgramCompiler.PROGRAM_EPILOG;
         assertValidJQProgram(input, expectedOutput);
     }
 
     @Test
     void e() {
-        var input = "$[:] | port=$.ports[:] | { $.ip, $port.port, $port.proto }";
+        var input = "$[] | port=$.ports[] | { $.ip, $port.port, $port.proto }";
         var expectedOutput = "[.[] | .ports[] as $port | {ip: .ip, port: $port.port, proto: $port.proto}] | " + ProgramCompiler.PROGRAM_EPILOG;
         assertValidJQProgram(input, expectedOutput);
     }
 
     @Test
     void f() {
-        var input = "$[:][:]";
+        var input = "$[][]";
         var expectedOutput = "[.[][]] | " + ProgramCompiler.PROGRAM_EPILOG;
         assertValidJQProgram(input, expectedOutput);
     }
