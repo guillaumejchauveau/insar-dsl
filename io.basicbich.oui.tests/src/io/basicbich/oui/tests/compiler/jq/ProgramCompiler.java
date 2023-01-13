@@ -12,18 +12,7 @@ import java.util.stream.Collectors;
 public class ProgramCompiler implements Compiler<Program, String> {
     public static final String PROGRAM_EPILOG = "(first(.[]) | keys_unsorted), (.[] | [.[]]) | @csv";
 
-    private String nInt(NullableINT nInt) {
-        return nInt == null ? "" : Integer.toString(nInt.getVal());
-    }
-
-    private String selectorRangeFragment(RangeSelectorFragment fragment) {
-        if (fragment.getStart() == null && fragment.getEnd() == null) {
-            return "[]";
-        }
-        return "[" + nInt(fragment.getStart()) + ":" + nInt(fragment.getEnd()) + "]";
-    }
-
-    private String selectorIndexFragment(IndexSelectorFragment fragment) {
+    private String indexSelectorFragment(IndexSelectorFragment fragment) {
         return fragment.getIndexes().stream()
                 .map(Object::toString)
                 .collect(Collectors.joining(", ", "[", "]"));
@@ -31,9 +20,10 @@ public class ProgramCompiler implements Compiler<Program, String> {
 
     private String selectorFragment(SelectorFragment fragment) {
         return (String) new AlternativeMapper<>()
-                .map(RangeSelectorFragment.class, this::selectorRangeFragment)
                 .map(AttributeSelectorFragment.class, attr -> "." + attr.getAttribute())
-                .map(IndexSelectorFragment.class, this::selectorIndexFragment)
+                .map(IndexSelectorFragment.class, this::indexSelectorFragment)
+                .map(SliceSelectorFragment.class, range -> "[" + range.getStart() + ":" + range.getEnd() + "]")
+                .map(StartSliceSelectorFragment.class, range -> "[" + range.getStart() + ":]")
                 .compile(fragment);
     }
 
