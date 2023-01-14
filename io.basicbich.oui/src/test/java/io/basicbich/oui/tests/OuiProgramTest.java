@@ -23,7 +23,7 @@ public class OuiProgramTest {
 
     @Test
     void c() {
-        var input = "$.quiz | entries | category=$.key | $.value | entries | {id: $.key, $category, $.value.question}";
+        var input = "$.quiz | entries | category=$.key; $.value | entries | {id: $.key, $category, $.value.question}";
         var expectedOutput = "[.quiz | to_entries[] | .key as $category | .value | to_entries[] | {id: .key, category: $category, question: .value.question}] | " + ProgramCompiler.PROGRAM_EPILOG;
         assertValidJQProgram(input, expectedOutput);
     }
@@ -37,7 +37,7 @@ public class OuiProgramTest {
 
     @Test
     void e() {
-        var input = "$[] | port=$.ports[] | { $.ip, $port.port, $port.proto }";
+        var input = "$[] | port=$.ports[]; { $.ip, $port.port, $port.proto }";
         var expectedOutput = "[.[] | .ports[] as $port | {ip: .ip, port: $port.port, proto: $port.proto}] | " + ProgramCompiler.PROGRAM_EPILOG;
         assertValidJQProgram(input, expectedOutput);
     }

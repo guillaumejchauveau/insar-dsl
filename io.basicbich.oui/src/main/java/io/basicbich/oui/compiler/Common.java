@@ -1,38 +1,39 @@
 package io.basicbich.oui.compiler;
 
-import io.basicbich.oui.oui.AssignmentSelectorScope;
-import io.basicbich.oui.oui.AttributeSelectorFragment;
-import io.basicbich.oui.oui.FilterSelectorScope;
-import io.basicbich.oui.oui.ObjectAttribute;
-import io.basicbich.oui.oui.impl.ObjectAttributeImpl;
 import io.basicbich.oui.compiler.exception.CompilerException;
 import io.basicbich.oui.compiler.exception.NonInferableAttributeNameException;
+import io.basicbich.oui.oui.*;
+import io.basicbich.oui.oui.impl.ObjectAttributeImpl;
 
 public class Common {
     public static ObjectAttribute prepare(ObjectAttribute attr) {
         var attribute = attr;
-        if (attribute.getName() == null) {
+        if (attribute.getKey() == null) {
             try {
-                String name;
-                if (attribute.getSelector().getFragments().isEmpty()) {
-                    name = (String) new AlternativeMapper<>()
-                            .map(AssignmentSelectorScope.class, scope -> scope.getAssignment().getName())
+                if (!(attribute.getValue() instanceof Selector)) {
+                    throw new CompilerException("");
+                }
+                var selector = (Selector) attribute.getValue();
+                String key;
+                if (selector.getFragments().isEmpty()) {
+                    key = (String) new AlternativeMapper<>()
+                            .map(DeclarationSelectorScope.class, scope -> scope.getDeclaration().getName())
                             .map(FilterSelectorScope.class, scope -> scope.getFilter().getName())
-                            .compile(attribute.getSelector().getScope());
+                            .compile(selector.getScope());
                 } else {
-                    var fragments = attribute.getSelector().getFragments();
+                    var fragments = selector.getFragments();
                     if (fragments.isEmpty()) {
-                        throw new NonInferableAttributeNameException(attr);
+                        throw new CompilerException("");
                     }
                     var lastFragment = fragments.get(fragments.size() - 1);
-                    name = (String) new AlternativeMapper<>()
-                            .map(AttributeSelectorFragment.class, AttributeSelectorFragment::getAttribute)
+                    key = (String) new AlternativeMapper<>()
+                            .map(AttributeSelectorFragment.class, AttributeSelectorFragment::getKey)
                             .compile(lastFragment);
                 }
                 attribute = new ObjectAttributeImpl() {
                 };
-                attribute.setName(name);
-                attribute.setSelector(attr.getSelector());
+                attribute.setKey(key);
+                attribute.setValue(attr.getValue());
             } catch (CompilerException e) {
                 throw new NonInferableAttributeNameException(attr);
             }

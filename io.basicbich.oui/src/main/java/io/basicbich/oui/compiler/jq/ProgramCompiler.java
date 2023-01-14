@@ -2,10 +2,10 @@ package io.basicbich.oui.compiler.jq;
 
 
 import io.basicbich.oui.compiler.AlternativeMapper;
-import io.basicbich.oui.compiler.Compiler;
-import io.basicbich.oui.oui.*;
 import io.basicbich.oui.compiler.Common;
+import io.basicbich.oui.compiler.Compiler;
 import io.basicbich.oui.compiler.exception.UnknownFilterException;
+import io.basicbich.oui.oui.*;
 
 import java.util.stream.Collectors;
 
@@ -20,7 +20,7 @@ public class ProgramCompiler implements Compiler<Program, String> {
 
     private String selectorFragment(SelectorFragment fragment) {
         return (String) new AlternativeMapper<>()
-                .map(AttributeSelectorFragment.class, attr -> "." + attr.getAttribute())
+                .map(AttributeSelectorFragment.class, attr -> "." + attr.getKey())
                 .map(IndexSelectorFragment.class, this::indexSelectorFragment)
                 .map(SliceSelectorFragment.class, range -> "[" + range.getStart() + ":" + range.getEnd() + "]")
                 .map(StartSliceSelectorFragment.class, range -> "[" + range.getStart() + ":]")
@@ -48,7 +48,7 @@ public class ProgramCompiler implements Compiler<Program, String> {
                 .collect(Collectors.joining());
         return new AlternativeMapper<>()
                 .map(RootSelectorScope.class, scope -> fragments.startsWith(".") ? "" : ".")
-                .map(AssignmentSelectorScope.class, scope -> "$" + scope.getAssignment().getName())
+                .map(DeclarationSelectorScope.class, scope -> "$" + scope.getDeclaration().getName())
                 .map(FilterSelectorScope.class, scope -> this.filter(scope.getFilter()))
                 .compile(selector.getScope())
                 + fragments;
@@ -57,7 +57,7 @@ public class ProgramCompiler implements Compiler<Program, String> {
     private String objectConstructor(ObjectConstructor objectConstructor) {
         return objectConstructor.getAttributes().stream()
                 .map(Common::prepare)
-                .map(attr -> attr.getName() + ": " + this.selector(attr.getSelector()))
+                .map(attr -> attr.getKey() + ": " + this.instruction(attr.getValue()))
                 .collect(Collectors.joining(", ", "{", "}"));
     }
 
@@ -65,21 +65,29 @@ public class ProgramCompiler implements Compiler<Program, String> {
         return (String) new AlternativeMapper<>()
                 .map(Selector.class, this::selector)
                 .map(ObjectConstructor.class, this::objectConstructor)
-                .map(Assignment.class, assign -> this.instruction(assign.getInstruction()) + " as $" + assign.getName())
                 .map(InstructionSet.class, set -> "(" + this.instructionSet(set) + ")")
                 .compile(instruction);
     }
 
     private String instructionSet(InstructionSet instructionSet) {
-        return instructionSet.getInstructions().stream()
-                .map(this::instruction)
+        var result = instructionSet.getDeclarations().stream()
+                .map(dec -> this.instruction(dec.getValue()) + " as $" + dec.getName())
                 .collect(Collectors.joining(" | "));
+        if (!result.isEmpty()) {
+            result += " | ";
+        }
+        result += this.instruction(instructionSet.getInstruction());
+
+        if (instructionSet.getNext() != null) {
+            result += " | " + this.instructionSet(instructionSet.getNext());
+        }
+        return result;
     }
 
     public String compile(Program program) {
-        if (program.getInstructions() == null) {
+        if (program.getFirst() == null) {
             return PROGRAM_EPILOG;
         }
-        return "[" + this.instructionSet(program.getInstructions()) + "] | " + PROGRAM_EPILOG;
+        return "[" + this.instructionSet(program.getFirst()) + "] | " + PROGRAM_EPILOG;
     }
 }

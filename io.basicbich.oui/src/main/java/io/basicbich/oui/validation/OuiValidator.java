@@ -4,10 +4,7 @@
 package io.basicbich.oui.validation;
 
 
-import io.basicbich.oui.oui.NamedSelectorFragment;
-import io.basicbich.oui.oui.NamedSelectorScope;
-import io.basicbich.oui.oui.ObjectAttribute;
-import io.basicbich.oui.oui.OuiPackage;
+import io.basicbich.oui.oui.*;
 import org.eclipse.xtext.validation.Check;
 
 /**
@@ -16,24 +13,27 @@ import org.eclipse.xtext.validation.Check;
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#validation
  */
 public class OuiValidator extends AbstractOuiValidator {
-    public static final String MISSING_OBJECT_CONSTRUCTOR_ATTRIBUTE_NAME = "missingObjectConstructorAttributeName";
+    public static final String MISSING_OBJECT_CONSTRUCTOR_ATTRIBUTE_KEY = "missingObjectConstructorAttributeKey";
 
     @Check
-    public void checkOptionalObjectConstructorAttributeName(ObjectAttribute attribute) {
-        if (attribute.getName() != null) {
+    public void checkOptionalObjectConstructorAttributeKey(ObjectAttribute attribute) {
+        if (attribute.getKey() != null) {
             return;
         }
-        final var fragments = attribute.getSelector().getFragments();
-        if (fragments.isEmpty()) {
-            if (attribute.getSelector().getScope() instanceof NamedSelectorScope) {
-                return;
-            }
-        } else {
-            var lastFragment = fragments.get(fragments.size() - 1);
-            if (lastFragment instanceof NamedSelectorFragment) {
-                return;
+        if (attribute.getValue() instanceof Selector) {
+            var selector = (Selector) attribute.getValue();
+            final var fragments = selector.getFragments();
+            if (fragments.isEmpty()) {
+                if (selector.getScope() instanceof NamedSelectorScope) {
+                    return;
+                }
+            } else {
+                var lastFragment = fragments.get(fragments.size() - 1);
+                if (lastFragment instanceof NamedSelectorFragment) {
+                    return;
+                }
             }
         }
-        error("Object constructor attribute name is missing", attribute, OuiPackage.Literals.OBJECT_ATTRIBUTE__NAME, MISSING_OBJECT_CONSTRUCTOR_ATTRIBUTE_NAME);
+        error("Object constructor attribute name is missing", attribute, OuiPackage.Literals.OBJECT_ATTRIBUTE__KEY, MISSING_OBJECT_CONSTRUCTOR_ATTRIBUTE_KEY);
     }
 }

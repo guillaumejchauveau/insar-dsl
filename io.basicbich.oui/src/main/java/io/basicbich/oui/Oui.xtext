@@ -2,35 +2,35 @@ grammar io.basicbich.oui.Oui with org.eclipse.xtext.common.Terminals
 
 generate oui "http://basicbich.io/oui/Oui"
 
-Program: {Program} (instructions=InstructionSet)?;
+Program: {Program} (first=InstructionSet)?;
 
-InstructionSet: instructions+=Instruction ('|' instructions+=Instruction)*;
-Instruction: Selector | ObjectConstructor | Assignment | '(' InstructionSet ')';
+InstructionSet: declarations+=Declaration* instruction=Instruction ('|' next=InstructionSet)?;
+Instruction: Selector | ObjectConstructor | '(' InstructionSet ')';
+
+/* Declaration */
+Declaration: name=ID '=' value=Instruction ';';
 
 /* Selector */
 Selector: scope=SelectorScope (fragments+=SelectorFragment)*;
 
 SelectorScope: RootSelectorScope | NamedSelectorScope;
-NamedSelectorScope: AssignmentSelectorScope | FilterSelectorScope;
 RootSelectorScope: {RootSelectorScope} '$';
-AssignmentSelectorScope: '$' assignment=[Assignment]; // TODO: Add scope
+NamedSelectorScope: DeclarationSelectorScope | FilterSelectorScope;
+DeclarationSelectorScope hidden(): '$' declaration=[Declaration];
 FilterSelectorScope: filter=Filter;
 
 SelectorFragment: NamedSelectorFragment | IndexSelectorFragment | SliceSelectorFragment | StartSliceSelectorFragment;
 NamedSelectorFragment: AttributeSelectorFragment;
-AttributeSelectorFragment: '.' attribute=ObjectAttributeName;
+AttributeSelectorFragment hidden(): '.' key=ObjectAttributeKey;
 
 IndexSelectorFragment: {IndexSelectorFragment} '[' indexes+=INT? (',' indexes+=INT)* ']';
 SliceSelectorFragment: '[' start=INT? ':' end=INT ']';
 StartSliceSelectorFragment: '[' start=INT ':' ']';
 
 /* Object constructor */
-ObjectConstructor: '{' attributes+=ObjectAttribute (',' attributes+=ObjectAttribute)* '}';
-ObjectAttribute: (name=ObjectAttributeName ':')? selector=Selector;
-ObjectAttributeName: ID;
-
-/* Assignment */
-Assignment: name=ID '=' instruction=Instruction; // TODO: validate that name does not exist
+ObjectConstructor: {ObjectConstructor} '{' (attributes+=ObjectAttribute (',' attributes+=ObjectAttribute)*)? '}';
+ObjectAttribute: (key=ObjectAttributeKey ':')? value=Instruction;
+ObjectAttributeKey: ID | STRING;
 
 /* Filter */
 Filter: name=ID;
