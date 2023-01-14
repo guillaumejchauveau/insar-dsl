@@ -5,12 +5,14 @@ generate oui "http://basicbich.io/oui/Oui"
 Program: {Program} (first=InstructionSet)?;
 
 InstructionSet: declarations+=Declaration* instruction=Instruction ('|' next=InstructionSet)?;
-Instruction: Selector | ObjectConstructor | '(' InstructionSet ')';
 
 /* Declaration */
 Declaration: name=ID '=' value=Instruction ';';
 
-/* Selector */
+/* Instruction */
+Instruction: Selector | Object | '(' InstructionSet ')';
+
+// Selector
 Selector: scope=SelectorScope (fragments+=SelectorFragment)*;
 
 SelectorScope: RootSelectorScope | NamedSelectorScope;
@@ -20,17 +22,17 @@ DeclarationSelectorScope hidden(): '$' declaration=[Declaration];
 FilterSelectorScope: filter=Filter;
 
 SelectorFragment: NamedSelectorFragment | IndexSelectorFragment | SliceSelectorFragment | StartSliceSelectorFragment;
-NamedSelectorFragment: AttributeSelectorFragment;
-AttributeSelectorFragment hidden(): '.' key=ObjectAttributeKey;
+NamedSelectorFragment: PropertySelectorFragment;
+PropertySelectorFragment hidden(): '.' key=ObjectPropertyKey;
 
 IndexSelectorFragment: {IndexSelectorFragment} '[' indexes+=INT? (',' indexes+=INT)* ']';
 SliceSelectorFragment: '[' start=INT? ':' end=INT ']';
 StartSliceSelectorFragment: '[' start=INT ':' ']';
 
-/* Object constructor */
-ObjectConstructor: {ObjectConstructor} '{' (attributes+=ObjectAttribute (',' attributes+=ObjectAttribute)*)? '}';
-ObjectAttribute: (key=ObjectAttributeKey ':')? value=Instruction;
-ObjectAttributeKey: ID | STRING;
+// Object
+Object: {Object} '{' (properties+=ObjectProperty (',' properties+=ObjectProperty)*)? '}';
+ObjectProperty: (key=ObjectPropertyKey ':')? value=Instruction;
+ObjectPropertyKey: ID | STRING;
 
 /* Filter */
 Filter: name=ID;

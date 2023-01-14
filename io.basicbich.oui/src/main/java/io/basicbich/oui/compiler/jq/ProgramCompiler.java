@@ -14,16 +14,16 @@ public class ProgramCompiler implements Compiler<Program, String> {
 
     private String indexSelectorFragment(IndexSelectorFragment fragment) {
         return fragment.getIndexes().stream()
-                .map(Object::toString)
+                .map(java.lang.Object::toString)
                 .collect(Collectors.joining(", ", "[", "]"));
     }
 
     private String selectorFragment(SelectorFragment fragment) {
         return (String) new AlternativeMapper<>()
-                .map(AttributeSelectorFragment.class, attr -> "." + attr.getKey())
+                .map(PropertySelectorFragment.class, prop -> "." + prop.getKey())
                 .map(IndexSelectorFragment.class, this::indexSelectorFragment)
-                .map(SliceSelectorFragment.class, range -> "[" + range.getStart() + ":" + range.getEnd() + "]")
-                .map(StartSliceSelectorFragment.class, range -> "[" + range.getStart() + ":]")
+                .map(SliceSelectorFragment.class, slice -> "[" + slice.getStart() + ":" + slice.getEnd() + "]")
+                .map(StartSliceSelectorFragment.class, slice -> "[" + slice.getStart() + ":]")
                 .compile(fragment);
     }
 
@@ -54,17 +54,17 @@ public class ProgramCompiler implements Compiler<Program, String> {
                 + fragments;
     }
 
-    private String objectConstructor(ObjectConstructor objectConstructor) {
-        return objectConstructor.getAttributes().stream()
+    private String object(io.basicbich.oui.oui.Object object) {
+        return object.getProperties().stream()
                 .map(Common::prepare)
-                .map(attr -> attr.getKey() + ": " + this.instruction(attr.getValue()))
+                .map(prop -> prop.getKey() + ": " + this.instruction(prop.getValue()))
                 .collect(Collectors.joining(", ", "{", "}"));
     }
 
     private String instruction(Instruction instruction) {
         return (String) new AlternativeMapper<>()
                 .map(Selector.class, this::selector)
-                .map(ObjectConstructor.class, this::objectConstructor)
+                .map(io.basicbich.oui.oui.Object.class, this::object)
                 .map(InstructionSet.class, set -> "(" + this.instructionSet(set) + ")")
                 .compile(instruction);
     }

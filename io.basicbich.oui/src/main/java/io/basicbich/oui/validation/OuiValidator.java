@@ -13,15 +13,15 @@ import org.eclipse.xtext.validation.Check;
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#validation
  */
 public class OuiValidator extends AbstractOuiValidator {
-    public static final String MISSING_OBJECT_CONSTRUCTOR_ATTRIBUTE_KEY = "missingObjectConstructorAttributeKey";
+    public static final String MISSING_OBJECT_PROPERTY_KEY = "missingObjectPropertyKey";
 
     @Check
-    public void checkOptionalObjectConstructorAttributeKey(ObjectAttribute attribute) {
-        if (attribute.getKey() != null) {
+    public void checkOptionalObjectPropertyKey(ObjectProperty property) {
+        if (property.getKey() != null) {
             return;
         }
-        if (attribute.getValue() instanceof Selector) {
-            var selector = (Selector) attribute.getValue();
+        if (property.getValue() instanceof Selector) {
+            var selector = (Selector) property.getValue();
             final var fragments = selector.getFragments();
             if (fragments.isEmpty()) {
                 if (selector.getScope() instanceof NamedSelectorScope) {
@@ -34,6 +34,6 @@ public class OuiValidator extends AbstractOuiValidator {
                 }
             }
         }
-        error("Object constructor attribute name is missing", attribute, OuiPackage.Literals.OBJECT_ATTRIBUTE__KEY, MISSING_OBJECT_CONSTRUCTOR_ATTRIBUTE_KEY);
+        error("Property key is not specified and cannot be inferred from instruction", property, OuiPackage.Literals.OBJECT_PROPERTY__KEY, MISSING_OBJECT_PROPERTY_KEY);
     }
 }

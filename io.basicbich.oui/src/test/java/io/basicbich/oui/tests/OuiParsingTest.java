@@ -1,6 +1,7 @@
 package io.basicbich.oui.tests;
 
 import com.google.inject.Inject;
+import io.basicbich.oui.oui.Object;
 import io.basicbich.oui.oui.*;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
@@ -149,11 +150,11 @@ public class OuiParsingTest {
     }
 
     @Test
-    void attributeSelectorFragment() throws Exception {
-        var attributeSelector = assertSingleInstruction("$.name", 0, Selector.class);
-        assertNotNull(attributeSelector.getFragments());
-        var attributeFragment = assertSingleCollectionElement(attributeSelector.getFragments(), 1, 0, AttributeSelectorFragment.class);
-        assertEquals("name", attributeFragment.getKey());
+    void propertySelectorFragment() throws Exception {
+        var propertySelector = assertSingleInstruction("$.name", 0, Selector.class);
+        assertNotNull(propertySelector.getFragments());
+        var propertyFragment = assertSingleCollectionElement(propertySelector.getFragments(), 1, 0, PropertySelectorFragment.class);
+        assertEquals("name", propertyFragment.getKey());
     }
 
     @Test
@@ -190,18 +191,22 @@ public class OuiParsingTest {
     }
 
     @Test
-    void objectConstructor() throws Exception {
-        var classicConstructor = assertSingleInstruction("{attribute: $}", 0, ObjectConstructor.class);
-        assertNotNull(classicConstructor.getAttributes());
-        var attribute = assertSingleCollectionElement(classicConstructor.getAttributes(), 1, 0, ObjectAttribute.class);
-        assertEquals("attribute", attribute.getKey());
+    void object() throws Exception {
+        var full = assertSingleInstruction("{attribute: $}", 0, Object.class);
+        assertNotNull(full.getProperties());
+        var property = assertSingleCollectionElement(full.getProperties(), 1, 0, ObjectProperty.class);
+        assertEquals("attribute", property.getKey());
 
-        var shortcutConstructor = assertSingleInstruction("var=$; {$var}", 0, ObjectConstructor.class);
-        assertNotNull(shortcutConstructor.getAttributes());
-        var shortcut = assertSingleCollectionElement(shortcutConstructor.getAttributes(), 1, 0, ObjectAttribute.class);
-        assertNull(shortcut.getKey());
+        var shortcut = assertSingleInstruction("{filter}", 0, Object.class);
+        assertNotNull(shortcut.getProperties());
+        assertNull(assertSingleCollectionElement(shortcut.getProperties(), 1, 0, ObjectProperty.class).getKey());
+
+        validate(parse("{key: ($)}"));
+        validate(parse("var=$; {$var}"));
+        validate(parse("{key: {\"sub key\": $}}"));
 
         assertThrows(AssertionError.class, () -> validate(parse("{$}")));
         assertThrows(AssertionError.class, () -> validate(parse("{$[]}")));
+        assertThrows(AssertionError.class, () -> validate(parse("{($)}")));
     }
 }
