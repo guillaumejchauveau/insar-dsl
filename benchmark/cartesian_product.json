@@ -1,0 +1,14 @@
+{
+  "colors": [
+    "red",
+    "blue",
+    "green",
+    "yellow",
+    "orange"
+  ],
+  "cars": [
+    "Ford",
+    "BMW",
+    "Fiat"
+  ]
+}

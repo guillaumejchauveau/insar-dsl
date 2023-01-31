@@ -1,0 +1,1 @@
+[.quiz | to_entries[] | .key as $category | .value | to_entries[] | {id: .key, category: $category, question: .value.question}] | (first(.[]) | keys_unsorted), (.[] | [.[]]) | @csv

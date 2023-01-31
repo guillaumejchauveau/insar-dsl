@@ -11,6 +11,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -44,15 +45,18 @@ public class ProgramParser {
         return program;
     }
 
+    public Program parse(Path path) {
+        return parse(URI.createFileURI(path.toString()));
+    }
+
     public Program parse(String text) {
         try {
             var temp = File.createTempFile(UUID.randomUUID().toString(), ".oui");
-            var uri = URI.createFileURI(temp.getAbsolutePath());
             var bw = new BufferedWriter(new FileWriter(temp));
             bw.write(text);
             bw.close();
 
-            var program = parse(uri);
+            var program = parse(temp.toPath());
 
             temp.delete();
             return program;

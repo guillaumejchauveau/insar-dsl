@@ -1,0 +1,1 @@
+[.[] | {ip: .ip, port: .ports[].port}] | (first(.[]) | keys_unsorted), (.[] | [.[]]) | @csv

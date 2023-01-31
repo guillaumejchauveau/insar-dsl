@@ -1,0 +1,1 @@
+[{color: .colors[], car: .cars[]}] | (first(.[]) | keys_unsorted), (.[] | [.[]]) | @csv
