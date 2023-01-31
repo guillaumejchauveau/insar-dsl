@@ -22,20 +22,22 @@ classDiagram
     SelectorScope <|-- RootSelectorScope
     SelectorScope <|-- DeclarationSelectorScope
     SelectorScope <|-- FilterSelectorScope
+    <<Abstract>> SelectorScope
     DeclarationSelectorScope --> Declaration: declaration
     FilterSelectorScope : +String filter
     
     SelectorFragment <|-- PropertySelectorFragment
     SelectorFragment <|-- IndexSelectorFragment
     SelectorFragment <|-- SliceSelectorFragment
+    <<Abstract>> SelectorFragment
 
     PropertySelectorFragment: +String key
     IndexSelectorFragment: +Integer[] indexes
     SliceSelectorFragment: +Integer start
     SliceSelectorFragment: +Integer end
 
-    Object "1" *-- "0..n" ObjectProperty
-    ObjectProperty: +String key
+    Object "1" *-- "0..n" ObjectProperty: properties
+    ObjectProperty: +String? key
     ObjectProperty "1" *-- "1" Instruction: value
 ```
 

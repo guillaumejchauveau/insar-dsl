@@ -1,0 +1,1 @@
+(first(.[]) | keys_unsorted), (.[] | [.[]]) | @csv
