@@ -1,1 +1,1 @@
-$[] | { $.ip, $.ports[].port }
+$[] | { ip: $.ip, port: $.ports[].port }

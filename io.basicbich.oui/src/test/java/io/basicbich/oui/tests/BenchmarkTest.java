@@ -3,13 +3,13 @@ package io.basicbich.oui.tests;
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
 import io.basicbich.oui.ProgramParser;
-import io.basicbich.oui.compiler.jq.ProgramCompiler;
+import io.basicbich.oui.compiler.Compiler;
+import io.basicbich.oui.oui.Program;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,17 +38,22 @@ public class BenchmarkTest {
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     static class Test {
         final ProgramParser parser = new ProgramParser();
-        final ProgramCompiler jqCompiler = new ProgramCompiler();
+        final Compiler<Program, String> jqCompiler = new io.basicbich.oui.compiler.jq.ProgramCompiler();
+        final Compiler<Program, String> pythonCompiler = new io.basicbich.oui.compiler.python.ProgramCompiler();
 
         final Path ouiFile;
+        final Optional<Path> jsonSchemaFile;
         final Optional<Path> jsonFile;
         final Optional<Path> jqFile;
+        final Optional<Path> pythonFile;
         final Optional<Path> csvFile;
 
         Test(List<Path> files) {
             ouiFile = files.stream().filter(filterExtension(OUI_EXTENSION)).findFirst().orElseThrow();
+            jsonSchemaFile = files.stream().filter(filterExtension(JSON_SCHEMA_EXTENSION)).findFirst();
             jsonFile = files.stream().filter(filterExtension(JSON_EXTENSION)).findFirst();
             jqFile = files.stream().filter(filterExtension(JQ_EXTENSION)).findFirst();
+            pythonFile = files.stream().filter(filterExtension(PYTHON_EXTENSION)).findFirst();
             csvFile = files.stream().filter(filterExtension(CSV_EXTENSION)).findFirst();
         }
 
@@ -59,17 +64,29 @@ public class BenchmarkTest {
                 var jq = Files.readString(jqFile.get());
                 Assertions.assertEquals(jq, jqProgram);
             }
-            // TODO: compile to python
+            var pythonProgram = pythonCompiler.compile(program);
+            if (pythonFile.isPresent()) {
+                var python = Files.readString(pythonFile.get());
+                Assertions.assertEquals(python, pythonProgram);
+            }
         }
 
         void run() throws Throwable {
-            var jsonFile = this.jsonFile.orElseThrow().toFile();
+            File jsonFile;
+            if (this.jsonSchemaFile.isPresent()) {
+                jsonFile = this.generateJsonFile(jsonSchemaFile.get(), 1);
+            } else if (this.jsonFile.isPresent()) {
+                jsonFile = this.jsonFile.get().toFile();
+            } else {
+                throw new IllegalStateException("No JSON file or JSON schema file found");
+            }
+
             var program = parser.parse(ouiFile);
             var jqProgram = jqCompiler.compile(program);
+            var pythonProgram = pythonCompiler.compile(program);
 
             var jqCSV = this.readCSV(new InputStreamReader(this.runProcess(jsonFile, "jq", "-r", jqProgram)));
-
-            // TODO: run python program
+            var pythonCSV = this.readCSV(new InputStreamReader(this.runProcess(jsonFile, "python3", "-c", pythonProgram)));
 
             if (csvFile.isPresent()) {
                 var referenceCSVReader = new CSVReader(Files.newBufferedReader(this.csvFile.get()));
@@ -80,27 +97,64 @@ public class BenchmarkTest {
                 for (int i = 0; i < referenceCSV.size(); i++) {
                     Assertions.assertArrayEquals(referenceCSV.get(i), jqCSV.get(i));
                 }
-                // TODO: compare python output
+
+                Assertions.assertEquals(referenceCSV.size(), pythonCSV.size());
+                for (int i = 0; i < referenceCSV.size(); i++) {
+                    Assertions.assertArrayEquals(referenceCSV.get(i), pythonCSV.get(i));
+                }
             } else {
-                // TODO: compare outputs to each other
+                Assertions.assertEquals(jqCSV, pythonCSV);
             }
         }
 
         void evaluate() throws Throwable {
-            var jsonFile = this.jsonFile.orElseThrow().toFile();
+            File jsonFile;
+            if (this.jsonSchemaFile.isPresent()) {
+                jsonFile = this.generateJsonFile(jsonSchemaFile.get(), 1000);
+            } else if (this.jsonFile.isPresent()) {
+                jsonFile = this.jsonFile.get().toFile();
+            } else {
+                throw new IllegalStateException("No JSON file or JSON schema file found");
+            }
+
             var program = parser.parse(ouiFile);
             var jqProgram = jqCompiler.compile(program);
-            // TODO: compile to python
+            var pythonProgram = pythonCompiler.compile(program);
 
             for (int i = 0; i < BenchmarkTest.BENCHMARK_SAMPLING; i++) {
-                BenchmarkTest.performanceResults.add(this.evaluateProcess("jq", jsonFile, "jq", jqProgram));
-                // TODO: evaluate python program
+                BenchmarkTest.performanceResults.add(this.evaluateProcess("jq", jsonFile, "jq", "-r", jqProgram));
+                BenchmarkTest.performanceResults.add(this.evaluateProcess("python", jsonFile, "python3", "-c", pythonProgram));
             }
+        }
+
+        private File generateJsonFile(Path schemaFile, Integer itemsCount) throws IOException, InterruptedException {
+            var generatorConfigFile = File.createTempFile("json-schema-generator-options", ".js");
+            generatorConfigFile.deleteOnExit();
+            var writer = new FileWriter(generatorConfigFile);
+            writer.write("module.exports = {\n");
+            writer.write("  minItems: " + itemsCount + ",\n");
+            writer.write("  maxItems: " + itemsCount + ",\n");
+            writer.write("  minProperties: " + itemsCount + ",\n");
+            writer.write("  maxProperties: " + itemsCount + "\n");
+            writer.write("};\n");
+            writer.close();
+
+            var generatedJsonFile = File.createTempFile("json", ".json");
+            generatedJsonFile.deleteOnExit();
+
+            var processBuilder = new ProcessBuilder("generate-json", schemaFile.toString(), generatedJsonFile.toString(), "none", generatorConfigFile.getAbsolutePath());
+            processBuilder.redirectOutput(generatedJsonFile);
+            var process = processBuilder.start();
+            if (process.waitFor() != 0) {
+                throw new RuntimeException(new String(process.getErrorStream().readAllBytes()));
+            }
+            return generatedJsonFile;
         }
 
         private InputStream runProcess(File input, String... command) throws IOException, InterruptedException {
             var processBuilder = new ProcessBuilder(command);
             processBuilder.redirectInput(input);
+            processBuilder.redirectOutput(new File("/dev/null"));
             var process = processBuilder.start();
             Assertions.assertEquals(0, process.waitFor());
             var stderr = new String(process.getErrorStream().readAllBytes());
@@ -121,6 +175,7 @@ public class BenchmarkTest {
             args.addAll(List.of(command));
             var processBuilder = new ProcessBuilder(args);
             processBuilder.redirectInput(input);
+            processBuilder.redirectOutput(new File("/dev/null"));
             var process = processBuilder.start();
             Assertions.assertEquals(0, process.waitFor());
             var result = new String(process.getErrorStream().readAllBytes())
@@ -146,8 +201,10 @@ public class BenchmarkTest {
     static final Path BENCHMARK_FOLDER_PATH = Paths.get("../benchmark");
     static final Path BENCHMARK_EVALUATION_RESULTS_PATH = Paths.get("../benchmark/evaluation-results.csv");
     static final String OUI_EXTENSION = "oui";
+    static final String JSON_SCHEMA_EXTENSION = "schema.json";
     static final String JSON_EXTENSION = "json";
     static final String JQ_EXTENSION = "jq";
+    static final String PYTHON_EXTENSION = "py";
     static final String CSV_EXTENSION = "csv";
 
     private static Predicate<Path> filterExtension(String extension) {
@@ -155,6 +212,7 @@ public class BenchmarkTest {
     }
 
     @TestFactory
+    @Execution(ExecutionMode.CONCURRENT)
     Stream<DynamicContainer> files() throws IOException {
         try (var stream = Files.list(BENCHMARK_FOLDER_PATH)) {
             return stream

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "object",
+  "required": [
+    "colors",
+    "cars"
+  ],
+  "properties": {
+    "colors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cars": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
