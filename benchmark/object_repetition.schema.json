@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "ip",
+      "timestamp",
+      "ports"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "ip": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "ports": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "port",
+            "proto",
+            "status",
+            "reason",
+            "ttl"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer"
+            },
+            "proto": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "ttl": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -17,6 +17,7 @@ subprojects {
 	apply plugin: 'java-library'
 	dependencies {
 		api platform("org.eclipse.xtext:xtext-dev-bom:${xtextVersion}")
+		implementation "freemarker:freemarker:2.3.9"
 	}
 
 	apply plugin: 'org.xtext.xtend'
