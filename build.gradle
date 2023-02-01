@@ -9,7 +9,7 @@ buildscript {
 }
 
 subprojects {
-	ext.xtextVersion = '2.28.0'
+	ext.xtextVersion = '2.29.0'
 	repositories {
 		mavenCentral()
 	}
@@ -17,7 +17,6 @@ subprojects {
 	apply plugin: 'java-library'
 	dependencies {
 		api platform("org.eclipse.xtext:xtext-dev-bom:${xtextVersion}")
-		implementation "freemarker:freemarker:2.3.9"
 	}
 
 	apply plugin: 'org.xtext.xtend'
@@ -27,8 +26,8 @@ subprojects {
 	group = 'io.basicbich.oui'
 	version = '1.0.0-SNAPSHOT'
 
-	sourceCompatibility = '11'
-	targetCompatibility = '11'
+	sourceCompatibility = '17'
+	targetCompatibility = '17'
 
 	configurations.all {
 		exclude group: 'asm'

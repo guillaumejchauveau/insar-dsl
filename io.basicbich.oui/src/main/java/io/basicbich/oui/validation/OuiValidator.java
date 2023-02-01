@@ -8,7 +8,7 @@ import io.basicbich.oui.oui.*;
 import org.eclipse.xtext.validation.Check;
 
 /**
- * This class contains custom validation rules. 
+ * This class contains custom validation rules.
  *
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#validation
  */
@@ -20,8 +20,7 @@ public class OuiValidator extends AbstractOuiValidator {
         if (property.getKey() != null) {
             return;
         }
-        if (property.getValue() instanceof Selector) {
-            var selector = (Selector) property.getValue();
+        if (property.getValue() instanceof Selector selector) {
             final var fragments = selector.getFragments();
             if (fragments.isEmpty()) {
                 if (selector.getScope() instanceof NamedSelectorScope) {

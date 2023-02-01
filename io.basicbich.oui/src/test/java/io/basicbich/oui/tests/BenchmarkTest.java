@@ -19,18 +19,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class BenchmarkTest {
-    static class PerformanceResult {
-        final String name;
-        final String variant;
-        final Integer max_resident_set_size;
-        final Float elapsed_wall_time;
-
-        PerformanceResult(String name, String variant, Integer max_resident_set_size, Float elapsed_wall_time) {
-            this.name = name;
-            this.variant = variant;
-            this.max_resident_set_size = max_resident_set_size;
-            this.elapsed_wall_time = elapsed_wall_time;
-        }
+    record PerformanceResult(String name, String variant, Integer max_resident_set_size, Float elapsed_wall_time) {
     }
 
     protected static final Collection<PerformanceResult> performanceResults = Collections.synchronizedCollection(new ArrayList<>());

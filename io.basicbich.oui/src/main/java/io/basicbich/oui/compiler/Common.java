@@ -10,10 +10,9 @@ public class Common {
         var attribute = attr;
         if (attribute.getKey() == null) {
             try {
-                if (!(attribute.getValue() instanceof Selector)) {
+                if (!(attribute.getValue() instanceof Selector selector)) {
                     throw new CompilerException("");
                 }
-                var selector = (Selector) attribute.getValue();
                 String key;
                 if (selector.getFragments().isEmpty()) {
                     key = (String) new AlternativeMapper<>()

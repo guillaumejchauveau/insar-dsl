@@ -9,7 +9,7 @@ package io.basicbich.oui;
  */
 public class OuiStandaloneSetup extends OuiStandaloneSetupGenerated {
 
-	public static void doSetup() {
-		new OuiStandaloneSetup().createInjectorAndDoEMFRegistration();
-	}
+    public static void doSetup() {
+        new OuiStandaloneSetup().createInjectorAndDoEMFRegistration();
+    }
 }
