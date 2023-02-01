@@ -28,18 +28,13 @@ public class ProgramCompiler implements Compiler<Program, String> {
     }
 
     private String filter(Filter filter) {
-        switch (filter.getName()) {
-            case "entries":
-                return "to_entries[]";
-            case "keys":
-                return "keys_unsorted[]";
-            case "values":
-                return "values[]";
-            case "length":
-                return "length";
-            default:
-                throw new UnknownFilterException(filter);
-        }
+        return switch (filter.getName()) {
+            case "entries" -> "to_entries[]";
+            case "keys" -> "keys_unsorted[]";
+            case "values" -> "values[]";
+            case "length" -> "length";
+            default -> throw new UnknownFilterException(filter);
+        };
     }
 
     private String selector(Selector selector) {

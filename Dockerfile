@@ -1,6 +1,8 @@
-FROM gradle:7-jdk11-alpine
+FROM gradle:7.6-jdk19-alpine
 
-RUN apk add --no-cache jq python3
+RUN apk add --update --no-cache jq python3 nodejs npm
+
+RUN npm install -g json-schema-faker-cli
 
 VOLUME /home/gradle/src
 WORKDIR /home/gradle/src
