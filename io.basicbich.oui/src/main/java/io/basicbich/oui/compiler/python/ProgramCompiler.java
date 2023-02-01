@@ -44,7 +44,7 @@ public class ProgramCompiler implements Compiler<Program, String> {
     private String object(io.basicbich.oui.oui.Object object) {
         return object.getProperties().stream()
                 .map(Common::prepare)
-                .map(prop -> '"' + prop.getKey() + '"' + ": " + this.instruction(prop.getValue()))
+                .map(prop -> '"' + prop.key() + '"' + ": " + this.instruction(prop.value()))
                 .collect(Collectors.joining(", ", "Object({", "})"));
     }
 
