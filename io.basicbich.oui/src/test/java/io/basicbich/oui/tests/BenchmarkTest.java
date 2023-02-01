@@ -97,7 +97,10 @@ public class BenchmarkTest {
                     Assertions.assertArrayEquals(referenceCSV.get(i), pythonCSV.get(i));
                 }
             } else {
-                Assertions.assertEquals(jqCSV, pythonCSV);
+                Assertions.assertEquals(jqCSV.size(), pythonCSV.size());
+                for (int i = 0; i < jqCSV.size(); i++) {
+                    Assertions.assertArrayEquals(jqCSV.get(i), pythonCSV.get(i));
+                }
             }
         }
 
@@ -249,7 +252,7 @@ public class BenchmarkTest {
     @AfterAll
     static void afterAll() throws IOException {
         var csv = new StringBuilder();
-        csv.append("Name,Input size (bytes),Variant,Elapsed wall clock time (s),Maximum resident set size (kbytes)\n");
+        csv.append("Name,Input size (bytes),Variant,Elapsed wall clock time (s),Maximum resident set size (kilobytes)\n");
         synchronized (RESULTS) {
             for (var result : RESULTS) {
                 csv.append(result.name).append(',');

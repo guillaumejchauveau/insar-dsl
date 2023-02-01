@@ -51,15 +51,13 @@ public class ProgramParser {
 
     public Program parse(String text) {
         try {
-            var temp = File.createTempFile(UUID.randomUUID().toString(), ".oui");
+            var temp = File.createTempFile("", ".oui");
+            temp.deleteOnExit();
             var bw = new BufferedWriter(new FileWriter(temp));
             bw.write(text);
             bw.close();
 
-            var program = parse(temp.toPath());
-
-            temp.delete();
-            return program;
+            return parse(temp.toPath());
         } catch (IOException e) {
             throw new RuntimeException("Failed to create temp file", e);
         }
