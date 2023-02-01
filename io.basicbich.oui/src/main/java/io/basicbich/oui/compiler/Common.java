@@ -3,14 +3,54 @@ package io.basicbich.oui.compiler;
 import io.basicbich.oui.compiler.exception.CompilerException;
 import io.basicbich.oui.compiler.exception.NonInferableObjectPropertyKeyException;
 import io.basicbich.oui.oui.*;
-import io.basicbich.oui.oui.impl.ObjectPropertyImpl;
+
+import java.lang.Object;
+import java.util.Objects;
 
 public class Common {
-    public static ObjectProperty prepare(ObjectProperty attr) {
-        var attribute = attr;
-        if (attribute.getKey() == null) {
+    public static final class ParsedObjectProperty {
+        private final String key;
+        private final Instruction value;
+
+        ParsedObjectProperty(String key, Instruction value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        public String key() {
+            return key;
+        }
+
+        public Instruction value() {
+            return value;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) return true;
+            if (obj == null || obj.getClass() != this.getClass()) return false;
+            var that = (ParsedObjectProperty) obj;
+            return Objects.equals(this.key, that.key) &&
+                    Objects.equals(this.value, that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(key, value);
+        }
+
+        @Override
+        public String toString() {
+            return "ParsedObjectProperty[" +
+                    "key=" + key + ", " +
+                    "value=" + value + ']';
+        }
+    }
+
+    public static ParsedObjectProperty prepare(ObjectProperty property) {
+        if (property.getKey() == null) {
             try {
-                if (!(attribute.getValue() instanceof Selector selector)) {
+                if (!(property.getValue() instanceof Selector selector)) {
                     throw new CompilerException("");
                 }
                 String key;
@@ -29,14 +69,12 @@ public class Common {
                             .map(PropertySelectorFragment.class, PropertySelectorFragment::getKey)
                             .compile(lastFragment);
                 }
-                attribute = new ObjectPropertyImpl() {
-                };
-                attribute.setKey(key);
-                attribute.setValue(attr.getValue());
+
+                return new ParsedObjectProperty(key, property.getValue());
             } catch (CompilerException e) {
-                throw new NonInferableObjectPropertyKeyException(attr);
+                throw new NonInferableObjectPropertyKeyException(property);
             }
         }
-        return attribute;
+        return new ParsedObjectProperty(property.getKey(), property.getValue());
     }
 }

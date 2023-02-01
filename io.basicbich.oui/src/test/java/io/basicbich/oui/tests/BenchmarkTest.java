@@ -2,12 +2,11 @@ package io.basicbich.oui.tests;
 
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
+import com.opencsv.exceptions.CsvValidationException;
 import io.basicbich.oui.ProgramParser;
 import io.basicbich.oui.compiler.Compiler;
 import io.basicbich.oui.oui.Program;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -19,10 +18,14 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class BenchmarkTest {
-    record PerformanceResult(String name, String variant, Integer max_resident_set_size, Float elapsed_wall_time) {
+    record Options(Integer itemsCount, Integer iterationsCount) {
     }
 
-    protected static final Collection<PerformanceResult> performanceResults = Collections.synchronizedCollection(new ArrayList<>());
+    record Result(String name, Long input_size, String variant, Long max_resident_set_size, Float elapsed_wall_time) {
+    }
+
+    protected static final Collection<Result> RESULTS = Collections.synchronizedCollection(new ArrayList<>());
+    protected static final Collection<Process> PROCESSES = Collections.synchronizedCollection(new ArrayList<>());
 
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     static class Test {
@@ -30,6 +33,7 @@ public class BenchmarkTest {
         final Compiler<Program, String> jqCompiler = new io.basicbich.oui.compiler.jq.ProgramCompiler();
         final Compiler<Program, String> pythonCompiler = new io.basicbich.oui.compiler.python.ProgramCompiler();
 
+        final Collection<Options> optionsCases;
         final Path ouiFile;
         final Optional<Path> jsonSchemaFile;
         final Optional<Path> jsonFile;
@@ -37,7 +41,8 @@ public class BenchmarkTest {
         final Optional<Path> pythonFile;
         final Optional<Path> csvFile;
 
-        Test(List<Path> files) {
+        Test(Collection<Options> optionsCases, List<Path> files) {
+            this.optionsCases = optionsCases;
             ouiFile = files.stream().filter(filterExtension(OUI_EXTENSION)).findFirst().orElseThrow();
             jsonSchemaFile = files.stream().filter(filterExtension(JSON_SCHEMA_EXTENSION)).findFirst();
             jsonFile = files.stream().filter(filterExtension(JSON_EXTENSION)).findFirst();
@@ -96,10 +101,10 @@ public class BenchmarkTest {
             }
         }
 
-        void evaluate() throws Throwable {
+        void evaluate(Options options) throws Throwable {
             File jsonFile;
             if (this.jsonSchemaFile.isPresent()) {
-                jsonFile = this.generateJsonFile(jsonSchemaFile.get(), 1000);
+                jsonFile = this.generateJsonFile(jsonSchemaFile.get(), options.itemsCount);
             } else if (this.jsonFile.isPresent()) {
                 jsonFile = this.jsonFile.get().toFile();
             } else {
@@ -110,9 +115,9 @@ public class BenchmarkTest {
             var jqProgram = jqCompiler.compile(program);
             var pythonProgram = pythonCompiler.compile(program);
 
-            for (int i = 0; i < BenchmarkTest.BENCHMARK_SAMPLING; i++) {
-                BenchmarkTest.performanceResults.add(this.evaluateProcess("jq", jsonFile, "jq", "-r", jqProgram));
-                BenchmarkTest.performanceResults.add(this.evaluateProcess("python", jsonFile, "python3", "-c", pythonProgram));
+            for (int i = 0; i < options.iterationsCount; i++) {
+                BenchmarkTest.RESULTS.add(this.evaluateProcess("jq", jsonFile, "jq", "-r", jqProgram));
+                BenchmarkTest.RESULTS.add(this.evaluateProcess("python", jsonFile, "python3", "-c", pythonProgram));
             }
         }
 
@@ -134,6 +139,7 @@ public class BenchmarkTest {
             var processBuilder = new ProcessBuilder("generate-json", schemaFile.toString(), generatedJsonFile.toString(), "none", generatorConfigFile.getAbsolutePath());
             processBuilder.redirectOutput(generatedJsonFile);
             var process = processBuilder.start();
+            PROCESSES.add(process);
             if (process.waitFor() != 0) {
                 throw new RuntimeException(new String(process.getErrorStream().readAllBytes()));
             }
@@ -145,6 +151,7 @@ public class BenchmarkTest {
             processBuilder.redirectInput(input);
             processBuilder.redirectOutput(new File("/dev/null"));
             var process = processBuilder.start();
+            PROCESSES.add(process);
             Assertions.assertEquals(0, process.waitFor());
             var stderr = new String(process.getErrorStream().readAllBytes());
             Assertions.assertTrue(stderr.isEmpty());
@@ -158,7 +165,7 @@ public class BenchmarkTest {
             return csv;
         }
 
-        private PerformanceResult evaluateProcess(String variant, File input, String... command) throws IOException, InterruptedException {
+        private Result evaluateProcess(String variant, File input, String... command) throws IOException, InterruptedException {
             var args = new ArrayList<String>();
             args.addAll(List.of("time", "-f", "'%M %e'", "--"));
             args.addAll(List.of(command));
@@ -166,28 +173,33 @@ public class BenchmarkTest {
             processBuilder.redirectInput(input);
             processBuilder.redirectOutput(new File("/dev/null"));
             var process = processBuilder.start();
+            PROCESSES.add(process);
             Assertions.assertEquals(0, process.waitFor());
             var result = new String(process.getErrorStream().readAllBytes())
                     .trim()
                     .replaceAll("'", "")
                     .split(" ");
 
-            return new PerformanceResult(ouiFile.getFileName().toString(), variant, Integer.valueOf(result[0]), Float.valueOf(result[1]));
+            return new Result(ouiFile.getFileName().toString(), Files.size(input.toPath()), variant, Long.valueOf(result[0]), Float.valueOf(result[1]));
         }
 
         DynamicContainer toDynamicContainer() {
-            var tests = new ArrayList<DynamicTest>();
-            tests.add(DynamicTest.dynamicTest("compile", this::compile));
+            var nodes = new ArrayList<DynamicNode>();
+            nodes.add(DynamicTest.dynamicTest("compile", this::compile));
             if (jsonFile.isPresent()) {
-                tests.add(DynamicTest.dynamicTest("run", this::run));
-                tests.add(DynamicTest.dynamicTest("evaluate", this::evaluate));
+                nodes.add(DynamicTest.dynamicTest("run", this::run));
+                var evaluationNodes = new ArrayList<DynamicNode>();
+                for (var options : optionsCases) {
+                    evaluationNodes.add(DynamicTest.dynamicTest(options.toString(), () -> this.evaluate(options)));
+                }
+                nodes.add(DynamicContainer.dynamicContainer("evaluate", evaluationNodes));
             }
-            return DynamicContainer.dynamicContainer(ouiFile.getFileName().toString(), tests);
+            return DynamicContainer.dynamicContainer(ouiFile.getFileName().toString(), nodes);
         }
     }
 
-    static final Integer BENCHMARK_SAMPLING = 10;
     static final Path BENCHMARK_FOLDER_PATH = Paths.get("../benchmark");
+    static final Path BENCHMARK_EVALUATION_OPTIONS_PATH = Paths.get("../benchmark/evaluation-options.csv");
     static final Path BENCHMARK_EVALUATION_RESULTS_PATH = Paths.get("../benchmark/evaluation-results.csv");
     static final String OUI_EXTENSION = "oui";
     static final String JSON_SCHEMA_EXTENSION = "schema.json";
@@ -200,17 +212,36 @@ public class BenchmarkTest {
         return path -> path.getFileName().toString().endsWith(extension);
     }
 
+    @BeforeAll
+    static void beforeAll() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            for (var process : BenchmarkTest.PROCESSES) {
+                process.destroy();
+            }
+        }));
+    }
+
     @TestFactory
-    @Execution(ExecutionMode.CONCURRENT)
-    Stream<DynamicContainer> files() throws IOException {
+    Stream<DynamicContainer> files() throws IOException, CsvValidationException {
         try (var stream = Files.list(BENCHMARK_FOLDER_PATH)) {
+            var optionsCases = new ArrayList<Options>();
+            try (var reader = new FileReader(BENCHMARK_EVALUATION_OPTIONS_PATH.toFile())) {
+                var csv = new CSVReader(reader);
+                csv.skip(1);
+                var options = csv.readNext();
+                while (options != null) {
+                    optionsCases.add(new Options(Integer.parseInt(options[0]), Integer.parseInt(options[1])));
+                    options = csv.readNext();
+                }
+                csv.close();
+            }
             return stream
                     .filter(file -> !Files.isDirectory(file))
                     .collect(Collectors.groupingBy(file -> file.getFileName().toString().split("\\.", 2)[0]))
                     .values()
                     .stream()
                     .filter(paths -> paths.stream().anyMatch(filterExtension(OUI_EXTENSION)))
-                    .map(Test::new)
+                    .map(paths -> new Test(optionsCases, paths))
                     .map(Test::toDynamicContainer);
         }
     }
@@ -218,10 +249,11 @@ public class BenchmarkTest {
     @AfterAll
     static void afterAll() throws IOException {
         var csv = new StringBuilder();
-        csv.append("Name,Variant,Elapsed wall clock time (s),Maximum resident set size (kbytes)\n");
-        synchronized (performanceResults) {
-            for (var result : performanceResults) {
+        csv.append("Name,Input size (bytes),Variant,Elapsed wall clock time (s),Maximum resident set size (kbytes)\n");
+        synchronized (RESULTS) {
+            for (var result : RESULTS) {
                 csv.append(result.name).append(',');
+                csv.append(result.input_size).append(',');
                 csv.append(result.variant).append(',');
                 csv.append(result.elapsed_wall_time).append(',');
                 csv.append(result.max_resident_set_size).append('\n');

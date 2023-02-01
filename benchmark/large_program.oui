@@ -1,1 +1,1 @@
-$.quiz | entries | category=$.key; $.value | entries | {id: $.key, category: $category, question: $.value.question}
+$.quiz | entries | category=$.key; $.value | entries | {id: $.key, $category, $.value.question}
